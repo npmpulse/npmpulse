@@ -1,0 +1,186 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import '@mantine/core/styles.css'
+import '@mantine/dates/styles.css'
+import '@mantine/charts/styles.css'
+
+interface Props {
+  title: string
+  description: string
+}
+
+const { title, description } = Astro.props
+
+/*
+  Absolute URLs, because unfurlers and crawlers do not resolve a relative one
+  against the page it is on. `site` comes from astro.config.mjs; the fallback is
+  only there so a build without it still emits something valid.
+*/
+const site = Astro.site ?? new URL('https://npmpulse.com')
+const canonical = new URL(Astro.url.pathname, site).href
+const ogImage = new URL('/og.png', site).href
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href={canonical} />
+    {/*
+      The colour scheme, resolved before the first paint.
+
+      Mantine does this itself, but only inside a mounted provider -- so the
+      generated pages, which have no provider unless their chart island has
+      hydrated, and the index pages, which have none at all, were falling back to
+      the OS setting. A reader who chose light on the chart got dark everywhere
+      else. This is Mantine's own rule and its own storage key, inlined so it runs
+      before anything is drawn rather than after a provider arrives.
+    */}
+    <script is:inline>
+      try {
+        var stored = localStorage.getItem('mantine-color-scheme-value')
+        var choice = stored === 'light' || stored === 'dark' ? stored : null
+        if (!choice) {
+          var fromUrl = new URLSearchParams(location.search).get('theme')
+          if (fromUrl === 'light' || fromUrl === 'dark') choice = fromUrl
+        }
+        if (!choice) {
+          choice = matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+        }
+        document.documentElement.setAttribute(
+          'data-mantine-color-scheme',
+          choice
+        )
+      } catch (error) {
+        /* No storage, no matchMedia: the CSS media query still decides. */
+      }
+    </script>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style is:global>
+      /*
+        The page plane has to cover the whole viewport, not just the content,
+        or the strip below a short page stays white in dark mode. Mantine
+        stamps `data-mantine-color-scheme` on <html>, so both the OS preference
+        and the in-page toggle are handled here -- the :not() guard lets an
+        explicit light choice beat OS dark.
+      */
+      /*
+        The palette for everything outside Mantine -- the copy this page renders
+        itself, which has to be right before the island hydrates and in the
+        reader's own theme. Declared here rather than per page so the home page's
+        notes and the generated pages cannot drift apart. Three states: bare,
+        system dark, and an explicit dark choice, since an explicit light choice
+        has to beat a dark system.
+      */
+      html {
+        background: #f9f9f7;
+        --page-fg: #0b0b0b;
+        --page-muted: #52514e;
+        --page-line: #e1e0d9;
+        --page-accent: #2a78d6;
+        --page-code: #f1f0ec;
+
+        /*
+          The one type scale. Every surface reads these tokens -- the Mantine
+          app through `MANTINE_THEME`, and the prose this layout renders by hand
+          (`.doc`, `.about`) through `var()`. Before this there were three
+          scales: Mantine's defaults, one in `Doc.astro`, and one in
+          `index.astro`, so the same `h1` role came out 1.75rem on a generated
+          page and 1.35rem on the home page.
+        */
+        --type-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        --type-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --type-h1: 1.75rem;
+        --type-h2: 1.25rem;
+        --type-lead: 1.125rem;
+        --type-body: 1rem;
+        --type-small: 0.875rem;
+        --type-xs: 0.75rem;
+        --type-wordmark: 1.375rem;
+        --type-lh-heading: 1.15;
+        --type-lh-body: 1.6;
+        --type-measure: 68ch;
+      }
+      html[data-mantine-color-scheme='light'] {
+        background: #f9f9f7;
+      }
+      html[data-mantine-color-scheme='dark'] {
+        background: #0d0d0d;
+        --page-fg: #f0efec;
+        --page-muted: #a6a7ab;
+        --page-line: #2c2e33;
+        --page-accent: #3987e5;
+        --page-code: #212227;
+      }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-mantine-color-scheme='light']) {
+          background: #0d0d0d;
+          --page-fg: #f0efec;
+          --page-muted: #a6a7ab;
+          --page-line: #2c2e33;
+          --page-accent: #3987e5;
+          --page-code: #212227;
+        }
+      }
+      body {
+        color: var(--page-fg);
+        font-family: var(--type-sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        min-height: 100vh;
+        background: inherit;
+      }
+      code {
+        font-family: var(--type-mono);
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

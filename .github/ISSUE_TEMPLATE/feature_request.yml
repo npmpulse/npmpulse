@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest a package, a comparison, or a change to how the site works.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The change is easier to judge against the thing it fixes.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: packages
+    attributes:
+      label: If this is about adding packages or comparisons
+      options:
+        - label: I have read the "Adding a package or a comparison" part of CONTRIBUTING.md
+          required: false

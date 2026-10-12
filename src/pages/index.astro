@@ -1,0 +1,254 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import App from '../components/App.tsx'
+import SiteFooter from '../components/SiteFooter.astro'
+import Base from '../layouts/Base.astro'
+
+const title = 'npm download stats & history back to 2015 · npmpulse'
+const description =
+  'Compare npm package download stats back to 2015. Daily, weekly, monthly or yearly views, shareable links, and an SVG chart for your README.'
+
+/**
+ * Real entry points, rendered as links in real HTML.
+ *
+ * Each one is a working URL that shows something worth seeing, so a crawler has
+ * somewhere to go and a reader has a way in that does not require typing a
+ * package name first. `.astro` markup rather than part of the island, for the
+ * same reason as everything else in the section below.
+ */
+/**
+ * A short directory, because the home page is the page with links pointing at
+ * it and it was pointing at nothing: its samples were `?q=` URLs, which
+ * canonicalise straight back to `/`. A crawler follows links, so the pages that
+ * were built to be found need to be reachable from here.
+ */
+const popular = [
+  'react',
+  'vue',
+  'next',
+  'vite',
+  'typescript',
+  'lodash',
+  'axios',
+  'tailwindcss',
+  'jest',
+  'zod',
+]
+
+const popularPairs = [
+  'react-vs-vue',
+  'react-vs-svelte',
+  'vue-vs-svelte',
+  'axios-vs-got',
+  'jest-vs-vitest',
+  'moment-vs-dayjs',
+]
+
+const examples = [
+  {
+    href: '/?q=react,lodash',
+    label: 'react next to lodash',
+    note: 'five years, so both lines are on screen at once',
+  },
+  {
+    href: '/?q=next&range=all',
+    label: 'next over the whole record',
+    note: 'the head is trimmed to where its own data begins',
+  },
+  {
+    href: '/?q=vue,svelte,angular&range=5y&scale=log&granularity=monthly',
+    label: 'vue, svelte and angular on a log axis',
+    note: 'three packages spanning orders of magnitude',
+  },
+]
+---
+
+<Base title={title} description={description}>
+  {/*
+    The island does the app; the section below does the describing.
+
+    `client:load` would prerender the shell at build time, and Mantine survives
+    that -- it was tried, and the build passes. But what gets prerendered is the
+    shell before any effect has run: the chart area reads "No download data for
+    this range.", which is the sentence a search result would then show, and the
+    range label carries the build date, which the client recomputes from today.
+    That is a hydration mismatch on any build more than a day old, and six times
+    the HTML (37 KB against 6 KB), to index control labels.
+
+    So the copy that should exist before JavaScript runs lives in real markup:
+    one h1 that says what the page is, the paragraphs worth ranking, and links
+    that a crawler can follow.
+  */}
+  <App client:only="react" />
+
+  <section class="about">
+    <div class="inner">
+      <h1>npm package download history</h1>
+
+      <p class="standfirst">
+        npmpulse charts the download counts npm publishes for every package —
+        one package, or up to eight compared side by side — from its first data
+        day in 2015 through yesterday.
+      </p>
+
+      <p>
+        npm's downloads API returns at most 549 days for a single package and
+        365 days when several are compared, and it truncates an over-long range
+        rather than refusing it. That is why most download charts stop about 18
+        months back. npmpulse requests the whole span in chunks and stitches the
+        answers together, so one chart can run from 2015 to today.
+      </p>
+
+      <p>
+        The counts are npm's own and include CI and mirror traffic, so they
+        measure installs rather than people. Days npm lost entirely are
+        interpolated, the flat run of zeros before a package was first published
+        is trimmed, and the last day or two — which npm has not finalised — is
+        dropped. Each adjustment is counted and shown on the chart rather than
+        applied quietly.
+      </p>
+
+      <h2>Popular pages</h2>
+      <p>
+        {popular.map((name, index) => (
+          <>
+            {index > 0 ? ' · ' : ''}
+            <a href={`/${name}`}>{name}</a>
+          </>
+        ))}
+        {' · '}
+        {popularPairs.map((pair, index) => (
+          <>
+            {index > 0 ? ' · ' : ''}
+            <a href={`/compare/${pair}`}>{pair.replace('-vs-', ' vs ')}</a>
+          </>
+        ))}
+      </p>
+
+      <h2>Try it on a package you know</h2>
+      <ul class="examples">
+        {
+          examples.map(({ href, label, note }) => (
+            <li>
+              <a href={href}>{label}</a> — {note}
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="note">
+        Every view is a URL, so a link you copy shows the same chart to whoever
+        opens it. <code>/api/svg</code> returns that chart as an SVG that keeps
+        itself current in a README.
+      </p>
+
+      <SiteFooter />
+    </div>
+  </section>
+</Base>
+
+{/*
+  Scoped to this page, and deliberately outside Mantine: the section has to
+  render before the island hydrates, and in the reader's theme, so it carries its
+  own colour tokens rather than inheriting a provider that is not running yet.
+  Note that `body` sets no colour of its own -- everything above this section
+  gets one from Mantine -- so this block sets both colour and type itself, in all
+  three theme states: bare, system-dark, and an explicit dark choice.
+*/}
+<style>
+  .about {
+    color: var(--page-fg);
+    margin-top: 56px;
+    padding-block-end: 72px;
+    font-family: var(--type-sans);
+    font-size: var(--type-body);
+    line-height: var(--type-lh-body);
+    overflow-wrap: break-word;
+  }
+
+  /*
+    The rule sits on the inner box rather than on the section, so it spans the
+    same column the app above draws its own dividers across, instead of running
+    to the edges of the window.
+  */
+  .about .inner {
+    max-width: 1140px;
+    margin-inline: auto;
+    padding-inline: 16px;
+    padding-block-start: 44px;
+    border-top: 1px solid var(--page-line);
+  }
+
+  .about h1 {
+    font-size: var(--type-h1);
+    font-weight: 700;
+    line-height: var(--type-lh-heading);
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+
+  .about h2 {
+    font-size: var(--type-h2);
+    font-weight: 600;
+    line-height: var(--type-lh-heading);
+    margin: 30px 0 10px;
+    text-wrap: balance;
+  }
+
+  .about p {
+    margin: 0 0 14px;
+    max-width: var(--type-measure);
+    color: var(--page-muted);
+  }
+
+  .about .standfirst {
+    color: var(--page-fg);
+    font-size: var(--type-lead);
+  }
+
+  .about a {
+    color: var(--page-accent);
+  }
+
+  .about .examples {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+    max-width: var(--type-measure);
+    color: var(--page-muted);
+  }
+
+  .about code {
+    font-family: var(--type-mono);
+    font-size: 0.88em;
+    background: var(--page-code);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+</style>

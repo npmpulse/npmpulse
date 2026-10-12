@@ -1,0 +1,122 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Methodology from '../../components/Methodology.astro'
+import Doc from '../../layouts/Doc.astro'
+import { formatCompact, formatFull, formatPeriod } from '../../lib/format.ts'
+import {
+  thenAndNow,
+  WINDOW_FROM,
+  WINDOW_MONTHS,
+  WINDOW_TO,
+  windowLabel,
+} from '../../lib/rankings.ts'
+import { SNAPSHOT_PACKAGES, snapshot } from '../../lib/snapshot.ts'
+
+const rows = thenAndNow(snapshot.packages)
+const before = rows.reduce((sum, row) => sum + row.before, 0)
+const after = rows.reduce((sum, row) => sum + row.after, 0)
+const label = `${windowLabel(WINDOW_FROM, WINDOW_MONTHS)} against ${windowLabel(WINDOW_TO, WINDOW_MONTHS)}`
+
+/**
+ * The packages that are not in the table, split by why.
+ *
+ * A record that begins *during* 2015 has some of that year but not the ten months
+ * a like-for-like comparison needs, and saying it "did not exist in 2015" would
+ * be wrong: preact's record starts that September. Only the rest genuinely have
+ * nothing there.
+ */
+const covered = new Set(rows.map((row) => row.name))
+const partial = Object.entries(snapshot.packages)
+  .filter(
+    ([name, series]) =>
+      !covered.has(name) &&
+      series.firstDay.startsWith('2015') &&
+      series.firstDay > '2015-01-10'
+  )
+  .sort((x, y) => x[1].firstDay.localeCompare(y[1].firstDay))
+const absent = SNAPSHOT_PACKAGES.length - rows.length - partial.length
+
+/** As a string, because JSX trims the whitespace before an expression. */
+const partialRange = `${formatPeriod(partial[0][1].firstDay, 'monthly')} to ${formatPeriod(partial[partial.length - 1][1].firstDay, 'monthly')}`
+
+const standfirst =
+  `The ${rows.length} packages here whose record covers both windows did ` +
+  `${formatCompact(before)} downloads in the ten months of 2015 and ` +
+  `${formatCompact(after)} in the same ten months of 2025 — ` +
+  `${(after / before).toFixed(1)} times as many.`
+
+const title = `npm downloads in 2015 against today — ${label}`
+const description = `The ${rows.length} packages npmpulse tracks did ${(after / before).toFixed(1)} times as many downloads in the ten months of 2025 as in the same ten months of 2015.`
+---
+
+<Doc title={title} description={description}>
+  <h1>2015 against today</h1>
+  <p class="standfirst">{standfirst}</p>
+
+  <p>
+    Ten months rather than a calendar year at each end, because npm's record
+    begins on 2015-02-27 and its first complete month is March. Comparing ten
+    months with twelve would fold a fifth of a year into the answer.
+  </p>
+
+  <div class="tablewrap">
+    <table class="figures">
+      <caption class="sr-only">Downloads in the ten months of 2015 and of 2025</caption>
+      <thead>
+        <tr>
+          <th scope="col">Package</th>
+          <th scope="col">2015</th>
+          <th scope="col">2025</th>
+          <th scope="col">Multiple</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((row) => (
+            <tr>
+              <th scope="row"><a href={`/${row.name}`}>{row.name}</a></th>
+              <td title={formatFull(row.before)}>{formatCompact(row.before)}</td>
+              <td title={formatFull(row.after)}>{formatCompact(row.after)}</td>
+              <td>{row.multiple.toFixed(1)}×</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Another {partial.length} have a record that begins during 2015 itself, {partialRange}, so there is no ten-month baseline to measure them against. The remaining{' '}{absent} do not reach back that far at all.
+  </p>
+
+  <p>
+    This is a table of multiples rather than a chart because growth rates across a
+    decade compare badly: the starting points span three orders of magnitude, and
+    on any single axis the interesting middle of the list is a flat line.
+  </p>
+
+  <Methodology />
+</Doc>

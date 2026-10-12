@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>npmpulse</title>
+  <!-- One fixed drawing, because an icon cannot read the tab bar it lands in:
+       a near-black field, the mark in near-white, and a hairline rim so the
+       tile stays an object against Chrome's dark chrome (#292a2d). -->
+  <clipPath id="tile"><rect width="32" height="32" rx="8"/></clipPath>
+  <g clip-path="url(#tile)">
+    <rect width="32" height="32" fill="#1a1b1e"/>
+    <path d="M0 26 L5 23 L10 24 L15 18.5 L20 16 L25 10 L32 4.5 L32 32 L0 32 Z" fill="#f0efec" fill-opacity=".3"/>
+    <path d="M0 26 L5 23 L10 24 L15 18.5 L20 16 L25 10 L32 4.5" fill="none" stroke="#f0efec" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="#45484f"/>
+</svg>

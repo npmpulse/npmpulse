@@ -1,0 +1,104 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Methodology from '../../components/Methodology.astro'
+import Doc from '../../layouts/Doc.astro'
+import { formatCompact, formatFull } from '../../lib/format.ts'
+import { fastestGrowing } from '../../lib/rankings.ts'
+import { SNAPSHOT_PACKAGES, snapshot } from '../../lib/snapshot.ts'
+
+/**
+ * The floor is the point of this page.
+ *
+ * Ranking a whole set by a growth multiple puts a package that went from a
+ * thousand downloads a year to a hundred thousand at the top, telling a reader
+ * nothing about anything they have heard of. Requiring ten million in the
+ * earlier year keeps the list to packages where a multiple means something.
+ */
+const MIN_BEFORE = 10_000_000
+const rows = fastestGrowing(snapshot.packages, MIN_BEFORE)
+
+/**
+ * Assembled here rather than in the markup: JSX trims the whitespace before an
+ * expression, which turned "for the 77 packages" into "for the77" and "at 8.18
+ * times" into "at8.18".
+ */
+const standfirst =
+  'The trailing twelve months against the twelve before them, for the ' +
+  `${rows.length} tracked packages that did more than ` +
+  `${formatCompact(MIN_BEFORE)} downloads in the earlier year. ` +
+  (rows[0]
+    ? `${rows[0].name} leads, at ${rows[0].multiple.toFixed(2)} times.`
+    : 'None cleared the floor.')
+
+const title = 'Fastest growing npm packages — the last twelve months'
+const description = `Which npm packages grew most over the last year, among the ${SNAPSHOT_PACKAGES.length} npmpulse tracks and above a floor of ten million downloads in the year before.`
+---
+
+<Doc title={title} description={description}>
+  <h1>Fastest growing</h1>
+  <p class="standfirst">{standfirst}</p>
+
+  <p>
+    The floor is doing real work. Without it the list is topped by packages that
+    went from a handful of downloads a year to a few thousand — a multiple of a
+    hundred that says nothing about anything. Ten million in the earlier year
+    keeps it to packages where a doubling is news.
+  </p>
+
+  <div class="tablewrap">
+    <table class="figures">
+      <caption class="sr-only">Growth over the trailing twelve months</caption>
+      <thead>
+        <tr>
+          <th scope="col">Package</th>
+          <th scope="col">The year before</th>
+          <th scope="col">Last 12 months</th>
+          <th scope="col">Multiple</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((row) => (
+            <tr>
+              <th scope="row"><a href={`/${row.name}`}>{row.name}</a></th>
+              <td title={formatFull(row.before)}>{formatCompact(row.before)}</td>
+              <td title={formatFull(row.after)}>{formatCompact(row.after)}</td>
+              <td>{row.multiple.toFixed(2)}×</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    {SNAPSHOT_PACKAGES.length - rows.length} tracked packages are not listed:
+    either they did less than the floor in the earlier year, or their record is
+    shorter than two full years, so there is no year to compare against.
+  </p>
+
+  <Methodology />
+</Doc>

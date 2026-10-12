@@ -1,0 +1,110 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import type { ChartSeries, ScaleKind } from '../lib/svg-chart.ts'
+import { renderChart } from '../lib/svg-chart.ts'
+
+interface Props {
+  series: ChartSeries[]
+  granularity: string
+  title: string
+  /** Omit when the caption lives outside the figure, where a caller can keep it
+   *  on screen when the static chart is replaced by the interactive one. */
+  caption?: string
+  unit?: string
+  scale?: ScaleKind
+  height?: number
+}
+
+const {
+  series,
+  granularity,
+  title,
+  caption,
+  unit = 'downloads',
+  scale = 'linear',
+  height = 360,
+} = Astro.props
+
+/*
+  The same chart twice, once per theme.
+
+  An SVG carries its own colours and CSS cannot restyle it, so the only way to
+  have a chart that is legible on a light and a dark page without JavaScript is
+  to draw both and let the wrapper decide. Media queries and Mantine's attribute
+  are both consulted, so the reader's OS setting and an explicit choice on the
+  site both work.
+*/
+const options = { width: 820, height, granularity, title, unit, scale }
+const light = renderChart({ series }, { ...options, theme: 'light' })
+const dark = renderChart({ series }, { ...options, theme: 'dark' })
+---
+
+<figure class="chart">
+  <div class="on-light" aria-hidden="true" set:html={light} />
+  <div class="on-dark" aria-hidden="true" set:html={dark} />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .chart {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+  }
+
+  .chart .on-dark {
+    display: none;
+  }
+
+  .chart figcaption {
+    font-size: var(--type-small);
+    color: var(--page-muted);
+  }
+
+  :global(html[data-mantine-color-scheme='dark']) .chart .on-light {
+    display: none;
+  }
+  :global(html[data-mantine-color-scheme='dark']) .chart .on-dark {
+    display: block;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(html:not([data-mantine-color-scheme='light'])) .chart .on-light {
+      display: none;
+    }
+    :global(html:not([data-mantine-color-scheme='light'])) .chart .on-dark {
+      display: block;
+    }
+  }
+</style>

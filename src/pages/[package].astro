@@ -1,0 +1,196 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import type { GetStaticPaths } from 'astro'
+import LiveChart from '../components/LiveChart.astro'
+import Methodology from '../components/Methodology.astro'
+import Doc from '../layouts/Doc.astro'
+import { formatCompact, formatFull, formatPeriod } from '../lib/format.ts'
+import { groupOf } from '../lib/packages.ts'
+import { pairSlug, pairsWith } from '../lib/pairs.ts'
+import { monthStart, SNAPSHOT_PACKAGES, seriesFor } from '../lib/snapshot.ts'
+import { monthlyPoints, recentPoints, statsFor } from '../lib/stats.ts'
+
+/**
+ * One page per package in the snapshot.
+ *
+ * Rendered at build time from `data/downloads.json`, with the chart inlined as
+ * SVG, so everything a reader or a crawler needs is in the HTML: no JavaScript
+ * runs to produce these pages, and the figures are the same ones the interactive
+ * chart shows because both go through `prepareSeries`.
+ */
+export const getStaticPaths = (() =>
+  SNAPSHOT_PACKAGES.map((name) => ({
+    params: { package: name },
+  }))) satisfies GetStaticPaths
+
+const name = Astro.params.package ?? ''
+const series = seriesFor(name)
+if (!series) throw new Error(`no snapshot series for "${name}"`)
+
+const stats = statsFor(series)
+const group = groupOf(name)
+const siblings = (group?.packages ?? []).filter((sibling) => sibling !== name)
+
+/** The comparisons this package appears in, which are the pages worth linking. */
+const comparisons = pairsWith(name)
+const origin = Astro.site?.origin ?? 'https://npmpulse.com'
+const lastMonth = formatPeriod(
+  monthStart(series.monthlyStart, series.monthly.length - 1),
+  'monthly'
+)
+
+const title = `${name} downloads — npm stats and full history · npmpulse`
+const description =
+  `${name} gets about ${formatCompact(stats.last30)} npm downloads a month and ` +
+  `${formatCompact(stats.total)} in total, charted month by month from 2015.`
+
+/**
+ * The opening paragraph, assembled here rather than in the markup.
+ *
+ * The first day's *volume* is stated and never interpreted. An earlier draft
+ * called a small first day "the shape of a name reused rather than a package
+ * launched", which was wrong about vite -- it launched in 2020 and simply got
+ * 192 downloads that day. Nothing in the figure distinguishes a quiet launch
+ * from a reused name, so the page says what the figure is and the methodology
+ * note below explains that both are possible.
+ */
+const standfirst = [
+  `${name} has been downloaded ${formatCompact(stats.total)} times in total` +
+    (stats.last30 !== null
+      ? `, ${formatCompact(stats.last30)} of them in the last 30 days`
+      : '') +
+    `. npm's record for the name begins on ${series.firstDay}, at ${formatFull(series.firstDayDownloads)} download${series.firstDayDownloads === 1 ? '' : 's'} that day.`,
+  group
+    ? `${name} is tracked alongside ${siblings.join(', ')} as one of the ${group.label}.`
+    : null,
+]
+  .filter(Boolean)
+  .join(' ')
+---
+
+<Doc title={title} description={description}>
+  <h1>{name} downloads</h1>
+
+  <p class="standfirst">{standfirst}</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption class="sr-only">Download counts for {name}</caption>
+      <tbody>
+        <tr>
+          <th scope="row">All time</th>
+          <td title={formatFull(stats.total)}>{formatCompact(stats.total)}</td>
+        </tr>
+        {
+          stats.last90 !== null && (
+            <tr>
+              <th scope="row">Last 90 days</th>
+              <td title={formatFull(stats.last90)}>{formatCompact(stats.last90)}</td>
+            </tr>
+          )
+        }
+        {
+          stats.last30 !== null && (
+            <tr>
+              <th scope="row">Last 30 days</th>
+              <td title={formatFull(stats.last30)}>{formatCompact(stats.last30)}</td>
+            </tr>
+          )
+        }
+        {
+          stats.last7 !== null && (
+            <tr>
+              <th scope="row">Last 7 days</th>
+              <td title={formatFull(stats.last7)}>{formatCompact(stats.last7)}</td>
+            </tr>
+          )
+        }
+        <tr>
+          <th scope="row">Best month</th>
+          <td title={formatFull(stats.bestMonth.downloads)}>{stats.bestMonth.label} — {formatCompact(stats.bestMonth.downloads)}</td>
+        </tr>
+        <tr>
+          <th scope="row">Months recorded</th>
+          <td>{stats.months} ({stats.firstMonth} onwards)</td>
+        </tr>
+        {
+          stats.yearOverYear !== null && (
+            <tr>
+              <th scope="row">Last 12 months vs the 12 before</th>
+              <td>{stats.yearOverYear.toFixed(2)}×</td>
+            </tr>
+          )
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <LiveChart
+    series={[
+      {
+        name,
+        monthly: monthlyPoints(series),
+        daily: recentPoints(series),
+      },
+    ]}
+    asOf={series.lastDay}
+    title={`${name} downloads`}
+    caption={`Monthly downloads from ${stats.firstMonth} to ${lastMonth}, and nothing before that: npm's API reports 0 for every package until its real records begin, and those leading zeros are trimmed rather than charted.`}
+  />
+
+  <p>
+    <a href={`/?q=${name}`}>Open {name} in the interactive chart</a> for daily,
+    weekly or yearly views, a log axis, and a chart you can share as a link.
+  </p>
+
+  {
+    comparisons.length > 0 && (
+      <section>
+        <h2>Compared with</h2>
+        <ul>
+          {comparisons.map((pair) => (
+            <li>
+              <a href={`/compare/${pairSlug(pair.a, pair.b)}`}>
+                {name} vs {pair.a === name ? pair.b : pair.a} downloads
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <section>
+    <h2>Put this chart in a README</h2>
+    <p>
+      The image below redraws itself from npm's figures, so it stays current
+      without anyone editing the file that points at it.
+    </p>
+    <pre><code>{`<img src="${origin}/api/svg?q=${name}&range=5y&granularity=monthly" alt="${name} download history" />`}</code></pre>
+  </section>
+
+  <Methodology />
+</Doc>

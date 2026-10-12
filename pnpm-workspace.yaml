@@ -1,0 +1,9 @@
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@mantine/charts@9.7.2'
+  - '@mantine/core@9.7.2'
+  - '@mantine/dates@9.7.2'
+  - '@mantine/hooks@9.7.2'

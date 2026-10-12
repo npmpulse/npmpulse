@@ -1,0 +1,22 @@
+# Lefthook configuration
+# Install: pnpx lefthook install
+#
+# Derived from next101's lefthook.yml. Every hook here is fast enough to run on
+# every commit; the slow one waits for the push, which is the only moment the
+# whole test suite is worth paying for.
+
+pre-commit:
+  commands:
+    biome:
+      glob: "*.{ts,tsx,js,jsx,json,jsonc}"
+      run: pnpm lint
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpx commitlint --edit {1}
+
+pre-push:
+  commands:
+    test:
+      run: pnpm test

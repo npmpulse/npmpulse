@@ -1,0 +1,101 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Methodology from '../../components/Methodology.astro'
+import Doc from '../../layouts/Doc.astro'
+import { formatCompact, formatFull } from '../../lib/format.ts'
+import { NPM_FIRST_REAL_DAY, recordStarts } from '../../lib/rankings.ts'
+import { snapshot } from '../../lib/snapshot.ts'
+
+const rows = recordStarts(snapshot.packages)
+const onFirstDay = rows.filter((row) => row.firstDay === NPM_FIRST_REAL_DAY)
+const later = rows.filter((row) => row.firstDay !== NPM_FIRST_REAL_DAY)
+/** Records that begin already established, rather than at a launch. */
+const established = later.filter((row) => row.firstDayDownloads >= 10_000)
+
+const standfirst =
+  `npm's downloads API answers for every day from 2015-01-10, and reports zero ` +
+  `for all of them until ${NPM_FIRST_REAL_DAY}, when its real records start. ` +
+  `${onFirstDay.length} of the packages npmpulse tracks begin on exactly that ` +
+  'day, because they already existed when npm began counting.'
+
+const title = "Where npm's download record begins — and what it looks like"
+const description = `npm reports zero downloads for every package until ${NPM_FIRST_REAL_DAY}, including the ${onFirstDay.length} packages npmpulse tracks that existed long before it. Here is what the first day of each record looks like.`
+---
+
+<Doc title={title} description={description}>
+  <h1>Where the record begins</h1>
+  <p class="standfirst">{standfirst}</p>
+
+  <p>
+    The other {later.length} begin later, and how they begin is the interesting
+    part. A package that is genuinely new starts at nothing much and climbs. A
+    package whose record begins at hundreds of thousands of downloads a day
+    already existed, and what is missing is npm's history rather than its usage.
+    npm names also get reused, so a record can begin years before the package
+    anyone means by that name.
+  </p>
+
+  <div class="tablewrap">
+    <table class="figures">
+      <caption class="sr-only">The first day of each record, and what it was worth</caption>
+      <thead>
+        <tr>
+          <th scope="col">Package</th>
+          <th scope="col">First day</th>
+          <th scope="col">Downloads that day</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          later.map((row) => (
+            <tr>
+              <th scope="row"><a href={`/${row.name}`}>{row.name}</a></th>
+              <td>{row.firstDay}</td>
+              <td title={formatFull(row.firstDayDownloads)}>{formatCompact(row.firstDayDownloads)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    {established.length} of those {later.length} begin with more than ten
+    thousand downloads in a day, which no package does on the day it launches.
+    The rest begin quietly, and the figure on its own cannot say whether that was
+    a launch nobody noticed or a name with an earlier life — which is why the
+    pages state the number and leave the conclusion to you.
+  </p>
+
+  <p>
+    The {onFirstDay.length} packages that begin on {NPM_FIRST_REAL_DAY} are the
+    ones the rest of this site leans on: they are the only records that cover
+    npm's whole measured history.{' '}
+    <a href="/data/2015-vs-today">See how they compare with today</a>.
+  </p>
+
+  <Methodology />
+</Doc>

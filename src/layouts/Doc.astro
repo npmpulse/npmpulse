@@ -1,0 +1,452 @@
+---
+import SiteFooter from '../components/SiteFooter.astro'
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import { MARK_AREA, MARK_CREST, MARK_VIEWBOX } from '../lib/mark.ts'
+import Base from './Base.astro'
+
+interface Props {
+  title: string
+  description: string
+}
+
+const { title, description } = Astro.props
+---
+
+{/*
+  The shell every generated page shares: the head from Base, a way back to the
+  chart, and the type and colour for the copy this page renders itself.
+
+  Its styles are global rather than scoped because Astro scopes a component's
+  styles to its own markup, and the content here arrives through a slot from
+  another file. They are all prefixed with `.doc`, so globally scoped is not the
+  same as unscoped.
+*/}
+<Base title={title} description={description}>
+  <div class="doc">
+    <header class="head">
+      <a class="lockup" href="/">
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          width="26"
+          height="26"
+          viewBox={MARK_VIEWBOX}
+        >
+          <path d={MARK_AREA} fill="currentColor" opacity="0.3"></path>
+          <path
+            d={MARK_CREST}
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.6"
+            stroke-linejoin="round"
+            stroke-linecap="round"></path>
+        </svg>
+        <span class="word">npmpulse</span>
+      </a>
+
+      {/*
+        The same control the app's header carries, written as markup and a few
+        lines of script rather than mounted as an island: it has to work on pages
+        that ship no JavaScript bundle at all, and flipping a theme is not worth
+        800 KB. It writes Mantine's key, so a choice made here is the choice the
+        chart opens with, and the other way round.
+      */}
+      <button
+        class="scheme"
+        type="button"
+        data-color-scheme-toggle
+        aria-label="Switch to light theme"
+      >&#9789;</button>
+    </header>
+
+    <main><slot /></main>
+
+    <SiteFooter />
+  </div>
+</Base>
+
+<script is:inline>
+  /*
+    The button's own state, kept in step with the attribute the head script set.
+    Runs as it is parsed, so the glyph is never wrong on screen: no JavaScript
+    here means no toggle, but the scheme itself is still resolved from the OS.
+  */
+  ;(function () {
+    var root = document.documentElement
+    var button = document.querySelector('[data-color-scheme-toggle]')
+    if (!button) return
+
+    function label() {
+      var dark = root.getAttribute('data-mantine-color-scheme') === 'dark'
+      button.textContent = dark ? '\u2600' : '\u263E'
+      button.setAttribute(
+        'aria-label',
+        'Switch to ' + (dark ? 'light' : 'dark') + ' theme'
+      )
+    }
+
+    button.addEventListener('click', function () {
+      var next =
+        root.getAttribute('data-mantine-color-scheme') === 'dark'
+          ? 'light'
+          : 'dark'
+      try {
+        localStorage.setItem('mantine-color-scheme-value', next)
+      } catch (error) {
+        /* Private window: the choice lasts this page and no longer. */
+      }
+      root.setAttribute('data-mantine-color-scheme', next)
+      label()
+    })
+
+    label()
+  })()
+</script>
+
+<script is:inline>
+  /*
+    A copy button on every snippet, built here rather than written into each page
+    so a new code block gets one by existing.
+
+    The app's is a Mantine `CopyButton` inside a React island; these pages are
+    read far more than they are interacted with, and a snippet is not worth
+    loading a framework for. This runs after the page's own markup -- the layout
+    renders the slot above it -- so every `pre` is already in the document.
+
+    Reading the clipboard is not possible here and not needed: writing is, and
+    if the write is refused (an older browser, or a permission the reader has
+    denied) the snippet is selected instead, so the keyboard shortcut still
+    works.
+  */
+  ;(function () {
+    var blocks = document.querySelectorAll('.doc pre')
+    for (var i = 0; i < blocks.length; i++) {
+      ;(function (pre) {
+        var wrapper = document.createElement('div')
+        wrapper.className = 'code-block'
+        pre.parentNode.insertBefore(wrapper, pre)
+        wrapper.appendChild(pre)
+
+        var button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'copy'
+        button.textContent = 'Copy'
+        button.setAttribute('aria-label', 'Copy this snippet')
+        wrapper.appendChild(button)
+
+        var timer
+        function reset() {
+          button.textContent = 'Copy'
+          button.removeAttribute('data-copied')
+        }
+        function copied() {
+          button.textContent = 'Copied'
+          button.setAttribute('data-copied', 'true')
+          clearTimeout(timer)
+          timer = setTimeout(reset, 1600)
+        }
+        function selectInstead() {
+          var range = document.createRange()
+          range.selectNodeContents(pre)
+          var selection = window.getSelection()
+          if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+        }
+
+        button.addEventListener('click', function () {
+          var text = pre.textContent || ''
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(copied, selectInstead)
+          } else {
+            selectInstead()
+          }
+        })
+      })(blocks[i])
+    }
+  })()
+</script>
+
+<style is:global>
+  .doc {
+    /* The app's container is Mantine's `lg`, 1140px with 16px of padding: the
+       generated pages have to sit on the same column or moving between them
+       shifts everything sideways. Prose is held to a reading measure separately,
+       by the `max-width` on paragraphs. */
+    max-width: 1140px;
+    margin-inline: auto;
+    padding-inline: 16px;
+    padding-block: 26px 72px;
+    font-size: var(--type-body);
+    line-height: var(--type-lh-body);
+    /* A long package name, URL or id must break rather than widen the column. */
+    overflow-wrap: break-word;
+  }
+
+  .doc > * {
+    min-width: 0;
+  }
+
+  .doc .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block-end: 26px;
+  }
+
+  .doc .scheme {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    font-size: var(--type-body);
+    line-height: 1;
+    color: inherit;
+    background: none;
+    border: 1px solid var(--page-line);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .doc .scheme:hover {
+    border-color: var(--page-muted);
+  }
+
+  .doc .scheme:focus-visible {
+    outline: 2px solid var(--page-accent);
+    outline-offset: 2px;
+  }
+
+  .doc .lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .doc .lockup .word {
+    font-size: var(--type-wordmark);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /*
+    The prose rules are wrapped in `:where(.doc)`, which adds no specificity:
+    the selector is still "inside .doc", but it no longer outranks a component
+    library's class. As `.doc p` (0,1,1) it beat Mantine's `.mantine-Text-root`
+    (0,1,0), so every Mantine `Text` and `Table` cell inside the chart island --
+    the caption, the figures table -- picked up the prose margin and cell
+    padding, and the subpage chart came out spaced differently from the app's.
+    `:where(.doc) p` is (0,0,1), so the component's own class wins where one
+    exists and the hand-rendered prose is still styled.
+  */
+  :where(.doc) h1 {
+    font-size: var(--type-h1);
+    font-weight: 700;
+    line-height: var(--type-lh-heading);
+    letter-spacing: -0.015em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+
+  :where(.doc) h2 {
+    font-size: var(--type-h2);
+    font-weight: 600;
+    line-height: var(--type-lh-heading);
+    margin: 34px 0 10px;
+    text-wrap: balance;
+  }
+
+  .doc .standfirst {
+    font-size: var(--type-lead);
+    color: var(--page-fg);
+    max-width: var(--type-measure);
+    margin: 0 0 22px;
+  }
+
+  :where(.doc) p {
+    margin: 0 0 14px;
+    max-width: var(--type-measure);
+    color: var(--page-muted);
+  }
+
+  :where(.doc) a {
+    color: var(--page-accent);
+  }
+
+  :where(.doc) ul {
+    margin: 0 0 16px;
+    padding-inline-start: 20px;
+    color: var(--page-muted);
+    max-width: var(--type-measure);
+  }
+
+  :where(.doc) code {
+    font-family: var(--type-mono);
+    font-size: 0.88em;
+    background: var(--page-code);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+
+  /*
+    The code block as the app draws it: the snippet wraps rather than scrolling,
+    and the right-hand column is reserved so the copy button never lands on the
+    first line of the code. `animation.css` in the app derives that offset, so the
+    numbers here are the same ones.
+  */
+  :where(.doc) pre {
+    background: var(--page-code);
+    border: 1px solid var(--page-line);
+    border-radius: 6px;
+    padding: 10px 76px 10px 12px;
+    margin: 0 0 16px;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--type-mono);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  /* The positioned parent the button is measured against, added by the script
+     below. Without JavaScript the block keeps its own margin and no button. */
+  .doc .code-block {
+    position: relative;
+  }
+
+  .doc .code-block pre {
+    margin: 0;
+  }
+
+  .doc .copy {
+    position: absolute;
+    top: 7.5px;
+    right: 8px;
+    height: 22px;
+    padding: 0 8px;
+    font-family: inherit;
+    font-size: var(--type-xs);
+    line-height: 1;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--page-line);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .doc .copy:hover {
+    border-color: var(--page-muted);
+  }
+
+  .doc .copy:focus-visible {
+    outline: 2px solid var(--page-accent);
+    outline-offset: 2px;
+  }
+
+  /* Mantine fills the button teal while the copy is fresh, and so does this. */
+  .doc .copy[data-copied='true'] {
+    color: #fff;
+    background: #12b886;
+    border-color: #12b886;
+  }
+
+  .doc pre code {
+    background: none;
+    padding: 0;
+    font-size: 1em;
+  }
+
+  .doc .tablewrap {
+    overflow-x: auto;
+    margin: 0 0 20px;
+  }
+
+  :where(.doc) table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 380px;
+    font-size: var(--type-small);
+  }
+
+  :where(.doc) th,
+  :where(.doc) td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--page-line);
+  }
+
+  /*
+    A label column followed by figure columns. The figures line up on the right,
+    and so must the headings above them -- otherwise the heading of a numeric
+    column sits left while its numbers sit right, and the header row reads as a
+    row of stray labels.
+  */
+  .doc table.figures thead th:not(:first-child) {
+    text-align: right;
+  }
+
+  /* Bold and normal case, matching the table in the app rather than the small
+     capitals this started with: a heading in upper case reads as a label for the
+     table, while the app's reads as a column's name. */
+  :where(.doc) th {
+    font-size: var(--type-small);
+    font-weight: 700;
+    color: var(--page-fg);
+  }
+
+  /* Every value column is a number, so they all line up on the right. */
+  :where(.doc) td {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .doc .method {
+    margin-block-start: 44px;
+    padding-block-start: 26px;
+    border-block-start: 1px solid var(--page-line);
+  }
+
+  .doc .method h2 {
+    margin-block-start: 0;
+  }
+
+  .doc .method p {
+    font-size: var(--type-small);
+  }
+
+  /* A caption a screen reader reads and a sighted reader does not need twice. */
+  .doc .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

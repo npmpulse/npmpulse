@@ -1,0 +1,75 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import { DATA_START } from '../lib/npm-api.ts'
+import { snapshot } from '../lib/snapshot.ts'
+---
+
+{/*
+  The same caveats on every generated page. Written once so a page cannot state
+  a different version of how the figures were arrived at, and so the disclosure
+  the interactive chart makes in its hygiene note is made here too.
+*/}
+<section class="method">
+  <h2>Where these numbers come from</h2>
+  <p>
+    Download counts are npm's own, published through its downloads API. They
+    count installs rather than people, so they include CI, mirrors and repeated
+    installs, and a package pulled in as a dependency counts for that package
+    too.
+  </p>
+  <p>
+    npm's API returns at most 549 days for a single package and 365 when several
+    are compared, and truncates an over-long range rather than refusing it.
+    npmpulse asks for the whole span in 365-day chunks and stitches the answers
+    together, which is what makes a chart that starts in 2015 possible at all.
+  </p>
+  <p>
+    npm reports 0 for every package from {DATA_START} until 2015-02-27, when its
+    real records begin; those leading zeros are trimmed rather than charted.
+    Individual days it lost entirely are interpolated, and the most recent day or
+    two, which it has not finalised, is dropped. The monthly figures here are
+    complete calendar months, so a package that started mid-month begins with the
+    following one.
+  </p>
+  <p>
+    A handful of months are inflated in npm's own figures. svelte's 2022-11-23
+    records 5.0M downloads against a norm nearer 80K, and November 2022 is a spike
+    in several packages at once; they are left alone here, because they are what
+    the source says, but a one-month jump is treated as a spike rather than as a
+    change of fortune. That is why the comparisons below only call a lead change
+    a lead change when it held for a second month.
+  </p>
+  <p>
+    A package's record can also begin before the package did: npm names get
+    reused. Where a first day is a handful of downloads, that is what you are
+    looking at — the earlier life of the name rather than a slow launch. Where it
+    is hundreds of thousands, the opposite is true, and what is missing is
+    upstream history rather than usage.
+  </p>
+  <p>
+    Snapshot of {snapshot.generatedAt}. Figures run through {snapshot.lastDay}.
+  </p>
+</section>

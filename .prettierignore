@@ -1,0 +1,17 @@
+# Prettier is here for markdown only -- Biome owns every code file. Ignoring
+# everything else means an editor's format-on-save cannot end up fighting it.
+# `!*/` re-includes the directories themselves, or nothing below them would be
+# reachable at all.
+*
+!*/
+!*.md
+!*.mdx
+
+# Generated or vendored, and never worth rewriting. Later lines win, so these
+# override the re-includes above.
+node_modules
+dist
+coverage
+.astro
+.wrangler
+.bench-cache

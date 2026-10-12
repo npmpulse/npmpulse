@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: License headers
+        # Every source file carries the MIT header; a new file that was never
+        # stamped fails here rather than quietly shipping unlicensed.
+        run: pnpm license:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test with coverage
+        # The coverage thresholds in vitest.config.ts fail this step, which is
+        # the mechanism that keeps the floor from eroding.
+        run: pnpm test:cov
+
+      - name: Build
+        run: pnpm build

@@ -1,0 +1,88 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Methodology from '../../components/Methodology.astro'
+import Doc from '../../layouts/Doc.astro'
+import { DATA_START } from '../../lib/npm-api.ts'
+import { SNAPSHOT_PACKAGES, snapshot } from '../../lib/snapshot.ts'
+
+/**
+ * The hub for the data pages, and the place that says what the set is.
+ *
+ * Everything here is computed from the same snapshot the package pages are, over
+ * the same curated list, and every page says so: a ranking of 79 chosen packages
+ * is not a ranking of npm, and a page that forgot to mention it would be making a
+ * claim it cannot support.
+ */
+const title = 'The npm download data behind npmpulse'
+const description = `What the record shows across the ${SNAPSHOT_PACKAGES.length} packages npmpulse tracks: how much bigger they are than in 2015, where npm's data begins, and which ones grew fastest over the last year.`
+
+const pages = [
+  {
+    href: '/data/2015-vs-today',
+    label: '2015 against today',
+    note: 'the same ten months, a decade apart, for every package that existed then',
+  },
+  {
+    href: '/data/how-it-started',
+    label: 'Where the record begins',
+    note: "npm's first real day, and what the packages that arrive later looked like",
+  },
+  {
+    href: '/data/fastest-growing',
+    label: 'Fastest growing',
+    note: 'the trailing year against the year before it, above a floor',
+  },
+]
+---
+
+<Doc title={title} description={description}>
+  <h1>The figures behind the set</h1>
+  <p class="standfirst">
+    Four things the full record makes visible, computed from the same snapshot
+    the package pages are built from. All of them cover the
+    {SNAPSHOT_PACKAGES.length} packages npmpulse tracks rather than all of npm,
+    which is a curated list of what people look up.
+  </p>
+
+  <ul>
+    {
+      pages.map(({ href, label, note }) => (
+        <li>
+          <a href={href}>{label}</a> — {note}
+        </li>
+      ))
+    }
+  </ul>
+
+  <p>
+    Every figure is npm's own, published through its downloads API, and the
+    records run from {DATA_START} — though npm's real numbers begin on
+    2015-02-27, which the second page above is about. Snapshot of
+    {snapshot.generatedAt}, covering through {snapshot.lastDay}.
+  </p>
+
+  <Methodology />
+</Doc>

@@ -1,0 +1,106 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Doc from '../layouts/Doc.astro'
+import { formatCompact } from '../lib/format.ts'
+import { GROUPS, SOLO_PACKAGES } from '../lib/packages.ts'
+import { SNAPSHOT_PACKAGES, seriesFor } from '../lib/snapshot.ts'
+import { statsFor } from '../lib/stats.ts'
+
+/**
+ * The index every package page hangs from.
+ *
+ * Without it the generated pages were reachable only from the sitemap, which is
+ * a hint rather than a link: a crawler follows links, and the home page pointed
+ * at `?q=` URLs that canonicalise straight back to it. Each entry carries the
+ * package's trailing-year figure, so the page is a table of contents worth
+ * reading rather than a list of names.
+ */
+const title = 'Every npm package we chart — download history since 2015'
+const description = `All ${SNAPSHOT_PACKAGES.length} packages with a full download history on npmpulse, grouped by what they are alternatives to, with each one's trailing-year downloads.`
+
+/**
+ * The trailing-year figure as it will be shown, computed once per package.
+ *
+ * Returned already formatted and nullable, so the markup has no branch on a
+ * missing series and no non-null assertion to get wrong.
+ */
+const figureFor = (name: string): string | null => {
+  const series = seriesFor(name)
+  if (!series) return null
+  const trailing = series.monthly.slice(-12).reduce((sum, v) => sum + v, 0)
+  return formatCompact(trailing)
+}
+
+const groups = GROUPS.map((group) => ({
+  label: group.label,
+  packages: group.packages.map((name) => ({ name, figure: figureFor(name) })),
+}))
+
+const solo = SOLO_PACKAGES.map((name) => ({ name, figure: figureFor(name) }))
+---
+
+<Doc title={title} description={description}>
+  <h1>Packages we chart</h1>
+  <p class="standfirst">
+    {SNAPSHOT_PACKAGES.length} packages, each with its whole download record since
+    2015 and a page of its own. They are chosen rather than swept from the
+    registry: what makes a page worth having is the full history, which nothing
+    else publishes. Figures are the trailing twelve months.
+  </p>
+
+  {
+    groups.map((group) => (
+      <section>
+        <h2>{group.label}</h2>
+        <ul>
+          {group.packages.map(({ name, figure }) => (
+            <li>
+              <a href={`/${name}`}>{name} downloads</a>
+              {figure ? ` — ${figure} a year` : ''}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+
+  <section>
+    <h2>Also tracked</h2>
+    <ul>
+      {solo.map(({ name, figure }) => (
+        <li>
+          <a href={`/${name}`}>{name} downloads</a>
+          {figure ? ` — ${figure} a year` : ''}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <p>
+    Looking for something specific? <a href="/compare">Every comparison</a>, or
+    the <a href="/data">figures behind the whole set</a>.
+  </p>
+</Doc>

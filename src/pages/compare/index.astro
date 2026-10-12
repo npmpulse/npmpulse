@@ -1,0 +1,71 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Doc from '../../layouts/Doc.astro'
+import { GROUPS } from '../../lib/packages.ts'
+import { PAIRS, pairSlug } from '../../lib/pairs.ts'
+
+/**
+ * The index every comparison page hangs from.
+ *
+ * Grouped the way the pairs were chosen, so the page states the editorial rule
+ * as well as listing the links: these are packages people actually weigh up
+ * against each other, not every combination of the names above.
+ */
+const title = 'Compare npm package downloads — every comparison'
+const description = `All ${PAIRS.length} side-by-side npm download comparisons on npmpulse, from react against vue to drizzle-orm against prisma, each charted since 2015.`
+---
+
+<Doc title={title} description={description}>
+  <h1>Compare npm packages</h1>
+  <p class="standfirst">
+    {PAIRS.length} comparisons, each charting both packages month by month since
+    2015, with the month their positions last changed hands. They are the pairs
+    people actually weigh up against each other — the cross-product of every
+    package here would be a few thousand pages saying almost the same thing.
+  </p>
+
+  {
+    GROUPS.filter((group) => group.packages.length > 1).map((group) => (
+      <section>
+        <h2>{group.label}</h2>
+        <ul>
+          {PAIRS.filter((pair) => pair.label === group.label).map((pair) => (
+            <li>
+              <a href={`/compare/${pairSlug(pair.a, pair.b)}`}>
+                {pair.a} vs {pair.b}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+
+  <p>
+    <a href="/packages">Every package we chart</a>, or the
+    <a href="/data">figures behind the whole set</a>.
+  </p>
+</Doc>

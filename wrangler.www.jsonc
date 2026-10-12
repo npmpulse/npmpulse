@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "npmpulse-www",
+  "main": "worker/www.ts",
+  "compatibility_date": "2026-10-11",
+  "routes": [{ "pattern": "www.npmpulse.com", "custom_domain": true }]
+}

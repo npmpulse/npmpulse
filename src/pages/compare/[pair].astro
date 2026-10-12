@@ -1,0 +1,215 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import type { GetStaticPaths } from 'astro'
+import LiveChart from '../../components/LiveChart.astro'
+import Methodology from '../../components/Methodology.astro'
+import Doc from '../../layouts/Doc.astro'
+import {
+  formatCompact,
+  formatFull,
+  formatPeriod,
+  formatShare,
+} from '../../lib/format.ts'
+import { PAIRS, pairFromSlug, pairSlug, pairsWith } from '../../lib/pairs.ts'
+import { monthStart, seriesFor } from '../../lib/snapshot.ts'
+import {
+  compareSeries,
+  monthlyPoints,
+  recentPoints,
+  statsFor,
+} from '../../lib/stats.ts'
+
+/**
+ * One page per pair inside a group, comparing two packages' whole records.
+ *
+ * The facts that make these worth having are the ones only a full record can
+ * produce: when one overtook the other, and who leads over a trailing year. No
+ * site that can only fetch 18 months of data can state either.
+ */
+export const getStaticPaths = (() =>
+  PAIRS.map((pair) => ({
+    params: { pair: pairSlug(pair.a, pair.b) },
+  }))) satisfies GetStaticPaths
+
+const slug = Astro.params.pair ?? ''
+const pair = pairFromSlug(slug)
+if (!pair) throw new Error(`no such pair: ${slug}`)
+
+const { a, b } = pair
+const seriesA = seriesFor(a)
+const seriesB = seriesFor(b)
+if (!seriesA || !seriesB) throw new Error(`missing series for ${a} or ${b}`)
+
+const statsA = statsFor(seriesA)
+const statsB = statsFor(seriesB)
+const comparison = compareSeries(seriesA, seriesB)
+const origin = Astro.site?.origin ?? 'https://npmpulse.com'
+
+const last12A = seriesA.monthly.slice(-12).reduce((sum, v) => sum + v, 0)
+const last12B = seriesB.monthly.slice(-12).reduce((sum, v) => sum + v, 0)
+const leader = comparison.leader === 'a' ? a : b
+const trailing = comparison.leader === 'a' ? last12A : last12B
+
+/**
+ * The trailing-90-day pair, larger first.
+ *
+ * The sentence always expresses the smaller figure as a share of the larger one,
+ * so it reads the same way round whichever two packages a group happens to list:
+ * "34% of it" rather than "3037% of it".
+ */
+const [bigger, smaller] =
+  (statsA.last90 ?? 0) >= (statsB.last90 ?? 0)
+    ? [
+        { name: a, value: statsA.last90 ?? 0 },
+        { name: b, value: statsB.last90 ?? 0 },
+      ]
+    : [
+        { name: b, value: statsB.last90 ?? 0 },
+        { name: a, value: statsA.last90 ?? 0 },
+      ]
+
+const title = `${a} vs ${b} downloads — npm stats since 2015 · npmpulse`
+const description =
+  `${a} and ${b} side by side on npm: ` +
+  `${formatCompact(trailing)} downloads for ${leader} over the last twelve months, ` +
+  'charted month by month since 2015.'
+
+/**
+ * The opening paragraph, from the comparison alone.
+ *
+ * Crossings are stated with the month they happened and who took the lead; when
+ * one side has led throughout, that is what it says, because "no crossover" is a
+ * fact about the pair rather than an absence of one.
+ */
+const sentences = [
+  comparison.share !== null
+    ? `${smaller.name} took ${formatCompact(smaller.value)} downloads in the last 90 days against ${bigger.name}'s ${formatCompact(bigger.value)} — ${formatShare(smaller.value / bigger.value)} of it.`
+    : null,
+  `${leader} leads over the last twelve months, on ${formatCompact(trailing)}.`,
+  comparison.crossing
+    ? `The lead last changed hands in ${formatPeriod(comparison.crossing.month, 'monthly')}, when ${comparison.crossing.took === 'a' ? a : b} overtook ${comparison.crossing.took === 'a' ? b : a}.`
+    : `${leader === a ? a : b} has led for the whole of the two records.`,
+  `npm's record for ${a} begins on ${seriesA.firstDay}, and for ${b} on ${seriesB.firstDay}.`,
+]
+  .filter(Boolean)
+  .join(' ')
+
+const others = [
+  ...new Set(
+    [...pairsWith(a), ...pairsWith(b)]
+      .map((other) => pairSlug(other.a, other.b))
+      .filter((other) => other !== slug)
+  ),
+]
+---
+
+<Doc title={title} description={description}>
+  <h1>{a} vs {b} downloads</h1>
+  <p class="standfirst">{sentences}</p>
+
+  <div class="tablewrap">
+    <table class="figures">
+      <caption class="sr-only">{a} against {b}</caption>
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">{a}</th>
+          <th scope="col">{b}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Last 90 days</th>
+          <td title={statsA.last90 === null ? undefined : formatFull(statsA.last90)}>
+            {statsA.last90 === null ? '—' : formatCompact(statsA.last90)}
+          </td>
+          <td title={statsB.last90 === null ? undefined : formatFull(statsB.last90)}>
+            {statsB.last90 === null ? '—' : formatCompact(statsB.last90)}
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Last 12 months</th>
+          <td title={formatFull(last12A)}>{formatCompact(last12A)}</td>
+          <td title={formatFull(last12B)}>{formatCompact(last12B)}</td>
+        </tr>
+        <tr>
+          <th scope="row">All time</th>
+          <td title={formatFull(statsA.total)}>{formatCompact(statsA.total)}</td>
+          <td title={formatFull(statsB.total)}>{formatCompact(statsB.total)}</td>
+        </tr>
+        <tr>
+          <th scope="row">Record begins</th>
+          <td>{seriesA.firstDay}</td>
+          <td>{seriesB.firstDay}</td>
+        </tr>
+        <tr>
+          <th scope="row">Last 12 months vs the 12 before</th>
+          <td>{statsA.yearOverYear === null ? '—' : `${statsA.yearOverYear.toFixed(2)}×`}</td>
+          <td>{statsB.yearOverYear === null ? '—' : `${statsB.yearOverYear.toFixed(2)}×`}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <LiveChart
+    series={[
+      { name: a, monthly: monthlyPoints(seriesA), daily: recentPoints(seriesA) },
+      { name: b, monthly: monthlyPoints(seriesB), daily: recentPoints(seriesB) },
+    ]}
+    asOf={seriesA.lastDay}
+    scale={comparison.log ? 'log' : 'linear'}
+    title={`${a} vs ${b} downloads`}
+    caption={`Monthly downloads for both, each line starting where that package's own record does.${comparison.log ? ` Drawn on a log axis: ${a} and ${b} differ by more than fifty times, and on a linear one the smaller line would sit flat against the axis and read as nothing.` : ''}`}
+  />
+
+  <p>
+    <a href={`/${a}`}>{a} downloads</a>{' · '}
+    <a href={`/${b}`}>{b} downloads</a>{' · '}
+    <a href={`/?q=${a},${b}`}>open both in the interactive chart</a>
+  </p>
+
+  <section>
+    <h2>Also compared</h2>
+    <ul>
+      {others.map((other) => (
+        <li>
+          <a href={`/compare/${other}`}>{other.replace('-vs-', ' vs ')} downloads</a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section>
+    <h2>Put this chart in a README</h2>
+    <p>
+      Both series, redrawn from npm's figures whenever the image is fetched, so
+      the comparison stays current on its own.
+    </p>
+    <pre><code>{`<img src="${origin}/api/svg?q=${a},${b}&range=5y&granularity=monthly" alt="${a} compared with ${b} npm downloads" />`}</code></pre>
+  </section>
+
+  <Methodology />
+</Doc>

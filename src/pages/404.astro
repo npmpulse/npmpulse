@@ -1,0 +1,54 @@
+---
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026–Present Xiao Hanyu (https://xiaohanyu.me)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+import Doc from '../layouts/Doc.astro'
+
+/**
+ * The page a wrong URL lands on.
+ *
+ * `wrangler.jsonc` sets `not_found_handling: "404-page"`, which serves
+ * `/404.html` for a path the static build does not have -- but only if the
+ * build produces one, and a site with no `404.astro` produces none, so every
+ * mistyped URL got Cloudflare's bare default instead. Astro emits this file as
+ * `dist/404.html`, and the route is deliberately absent from `siteRoutes()`, so
+ * it is never listed in the sitemap.
+ */
+const title = 'Page not found · npmpulse'
+const description =
+  'That address is not one of the pages npmpulse publishes. Chart any npm package’s download history from here.'
+---
+
+<Doc title={title} description={description}>
+  <h1>Page not found</h1>
+  <p class="standfirst">
+    There is nothing at this address. It may have been a mistyped package name,
+    or a comparison the site does not publish.
+  </p>
+  <p>
+    <a href="/">Chart any npm package</a>{' · '}
+    <a href="/packages">every package we chart</a>{' · '}
+    <a href="/compare">every comparison</a>.
+  </p>
+</Doc>
