@@ -42,6 +42,19 @@ const { title, description } = Astro.props
 const site = Astro.site ?? new URL('https://npmpulse.com')
 const canonical = new URL(Astro.url.pathname, site).href
 const ogImage = new URL('/og.png', site).href
+
+/*
+  Cloudflare Web Analytics, when a token is configured.
+
+  Read from the environment rather than committed, so a fork does not report its
+  visitors to this deployment's account: the token is public (it ships in the
+  HTML) but the account it points at is not. Set `PUBLIC_CF_BEACON_TOKEN` (see
+  .env.example) to turn it on. Emitted only in a production build, so `astro
+  dev` never sends anything, and an absent token ships no beacon at all.
+*/
+const beacon = import.meta.env.PROD
+  ? import.meta.env.PUBLIC_CF_BEACON_TOKEN
+  : undefined
 ---
 
 <!doctype html>
@@ -179,6 +192,16 @@ const ogImage = new URL('/og.png', site).href
         font-family: var(--type-mono);
       }
     </style>
+    {
+      beacon && (
+        <script
+          is:inline
+          type="module"
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon={JSON.stringify({ token: beacon })}
+        />
+      )
+    }
   </head>
   <body>
     <slot />

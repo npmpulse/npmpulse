@@ -8,3 +8,7 @@ dist/
 .bench-cache/
 coverage/
 .commandcode/
+# Local env (e.g. PUBLIC_CF_BEACON_TOKEN); see .env.example
+.env
+.env.*
+!.env.example

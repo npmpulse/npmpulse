@@ -38,9 +38,8 @@ interface Props {
  * A share row rather than the platform-specific widgets.
  *
  * Each target is a plain link to a public share-intent endpoint, so nothing is
- * loaded from the networks until someone actually clicks, and the page carries
- * no third-party tracking script. Opening in a sized popup keeps the reader's
- * chart on screen behind the composer.
+ * loaded from those networks until someone actually clicks. Opening in a sized
+ * popup keeps the reader's chart on screen behind the composer.
  */
 export function ShareRow({ url, title, disabled = false }: Props) {
   const open = (target: string) => (event: React.MouseEvent) => {
