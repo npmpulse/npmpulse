@@ -63,6 +63,25 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Check required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PUBLIC_CF_BEACON_TOKEN: ${{ secrets.PUBLIC_CF_BEACON_TOKEN }}
+          PUBLIC_PLAUSIBLE_ENDPOINT: ${{ secrets.PUBLIC_PLAUSIBLE_ENDPOINT }}
+        run: |
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is empty. Add it under Settings -> Secrets and variables -> Actions, on the Secrets tab, then re-run the job."
+              exit 1
+            fi
+          done
+          for name in PUBLIC_CF_BEACON_TOKEN PUBLIC_PLAUSIBLE_ENDPOINT; do
+            if [ -z "${!name}" ]; then
+              echo "::warning::$name is empty; the deployed site ships without it."
+            fi
+          done
+
       - name: Build
         env:
           # Inlined into the static HTML at build time, so they must exist
