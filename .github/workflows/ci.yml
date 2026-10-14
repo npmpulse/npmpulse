@@ -9,11 +9,13 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.13.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -36,3 +38,52 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  deploy:
+    needs: verify
+    # Pull requests verify only; pushes to main ship.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        env:
+          # Inlined into the static HTML at build time, so they must exist
+          # here rather than as wrangler vars. The Plausible values ship in
+          # the public HTML anyway; the beacon token stays a secret, same as
+          # the repo's .env.
+          PUBLIC_PLAUSIBLE_ENABLED: 'true'
+          PUBLIC_PLAUSIBLE_DOMAIN: npmpulse.com
+          PUBLIC_PLAUSIBLE_ENDPOINT: ${{ secrets.PUBLIC_PLAUSIBLE_ENDPOINT }}
+          PUBLIC_CF_BEACON_TOKEN: ${{ secrets.PUBLIC_CF_BEACON_TOKEN }}
+        run: pnpm build
+
+      - name: Deploy site worker
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Keep in sync with the wrangler devDependency.
+          wranglerVersion: '4.149.0'
+          command: deploy
+
+      - name: Deploy www redirect
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.149.0'
+          command: deploy --config wrangler.www.jsonc
