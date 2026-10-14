@@ -42,11 +42,8 @@
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { prepareSeries } from '../src/lib/aggregate.ts'
 import {
-  addDays,
   DATA_START,
-  type DayPoint,
   fetchDownloads,
   NpmApiError,
   type SeriesMap,
@@ -54,68 +51,9 @@ import {
 } from '../src/lib/npm-api.ts'
 import { TRACKED_PACKAGES } from '../src/lib/packages.ts'
 import type { PackageSeries, Snapshot } from '../src/lib/snapshot.ts'
+import { summarise } from '../src/lib/summarise.ts'
 
-/**
- * Long enough for the 90-day figures and a year-over-year one, short enough that
- * the snapshot stays reviewable. The full record is kept monthly instead.
- */
-const DAILY_WINDOW = 200
 const OUT = 'data/downloads.json'
-
-/** Days are contiguous when each one is the day after the last. */
-function assertContiguousDays(days: readonly string[], what: string): void {
-  for (let i = 1; i < days.length; i++) {
-    if (addDays(days[i - 1], 1) !== days[i]) {
-      throw new Error(`${what}: ${days[i]} does not follow ${days[i - 1]}`)
-    }
-  }
-}
-
-/**
- * Months are contiguous when each is the calendar month after the last. Checked
- * because both arrays are stored as bare values with a start date, and an index
- * into one of them is only a real date if this holds.
- */
-function assertContiguousMonths(days: readonly string[], what: string): void {
-  const index = (day: string) => {
-    const [year, month] = day.split('-').map(Number)
-    return year * 12 + month
-  }
-  for (let i = 1; i < days.length; i++) {
-    if (index(days[i]) - index(days[i - 1]) !== 1) {
-      throw new Error(`${what}: ${days[i]} does not follow ${days[i - 1]}`)
-    }
-  }
-}
-
-/** What a page needs, or null when the package is too young to have one. */
-export function summarise(points: readonly DayPoint[]): PackageSeries | null {
-  const daily = prepareSeries(points, { granularity: 'daily' })
-  const monthly = prepareSeries(points, { granularity: 'monthly' })
-
-  const { firstRealDay, lastRealDay } = daily.report
-  if (!firstRealDay || !lastRealDay) return null
-  // One month is a dot, not a history.
-  if (monthly.points.length < 2) return null
-
-  const firstDayDownloads = daily.points[0].downloads
-  const window = daily.points.slice(-DAILY_WINDOW)
-  const days = window.map((p) => p.day)
-  const months = monthly.points.map((p) => p.day)
-  assertContiguousDays(days, 'daily window')
-  assertContiguousMonths(months, 'monthly series')
-
-  return {
-    firstDay: firstRealDay,
-    firstDayDownloads,
-    lastDay: lastRealDay,
-    total: daily.points.reduce((sum, point) => sum + point.downloads, 0),
-    monthlyStart: months[0],
-    monthly: monthly.points.map((p) => p.downloads),
-    dailyStart: days[0],
-    daily: window.map((p) => p.downloads),
-  }
-}
 
 /**
  * Fetch, and if a batch 404s, bisect it.

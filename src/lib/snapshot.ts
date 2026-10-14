@@ -83,18 +83,8 @@ export const SNAPSHOT_PACKAGES: readonly string[] = Object.keys(
   snapshot.packages
 ).sort()
 
-/** 'YYYY-MM-01' for `index` months after `start`, which is itself a month start. */
-export function monthStart(start: string, index: number): string {
-  const [year, month] = start.split('-').map(Number)
-  const zero = year * 12 + (month - 1) + index
-  const y = Math.floor(zero / 12)
-  const m = (zero % 12) + 1
-  return `${y}-${String(m).padStart(2, '0')}-01`
-}
-
-/** 'YYYY-MM-DD' for `index` days after `start`. */
-export function dayAt(start: string, index: number): string {
-  const [y, m, d] = start.split('-').map(Number)
-  const date = new Date(Date.UTC(y, m - 1, d) + index * 86_400_000)
-  return date.toISOString().slice(0, 10)
-}
+// Defined in `npm-api.ts` alongside the other date helpers, and re-exported
+// here so existing importers keep working. New browser code should import
+// them from `npm-api.ts` instead: importing this module pulls the whole
+// snapshot JSON into the bundle.
+export { dayAt, monthStart } from './npm-api.ts'

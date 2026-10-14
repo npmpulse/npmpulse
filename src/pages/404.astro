@@ -23,17 +23,28 @@
  * SOFTWARE.
  *
  */
+import Methodology from '../components/Methodology.astro'
 import Doc from '../layouts/Doc.astro'
 
 /**
- * The page a wrong URL lands on.
+ * The page a wrong URL lands on -- and the page an untracked package gets.
  *
  * `wrangler.jsonc` sets `not_found_handling: "404-page"`, which serves
- * `/404.html` for a path the static build does not have -- but only if the
- * build produces one, and a site with no `404.astro` produces none, so every
- * mistyped URL got Cloudflare's bare default instead. Astro emits this file as
- * `dist/404.html`, and the route is deliberately absent from `siteRoutes()`, so
- * it is never listed in the sitemap.
+ * `/404.html` for a path the static build does not have. A missing path is
+ * usually not a typo but a package the snapshot does not track (`/yamlresume`,
+ * `/@scope/name`), so this page is two pages in one:
+ *
+ *  - the plain 404, what a reader without JavaScript sees and what genuinely
+ *    unknown paths keep;
+ *  - a package page with the same shape as the static ones, rendered in the
+ *    browser from a live npm API fetch. The figures come from `summarise`, the
+ *    same reduction `pnpm data:refresh` runs, so a dynamic page cannot disagree
+ *    with a static one; the chart is the same `SnapshotChart` island the static
+ *    pages hydrate.
+ *
+ * The URL stays put -- no redirect -- so `/yamlresume` is the address worth
+ * sharing. The status code stays 404, which static asset serving cannot change;
+ * these pages are not meant for the index anyway.
  */
 const title = 'Page not found · npmpulse'
 const description =
@@ -41,14 +52,277 @@ const description =
 ---
 
 <Doc title={title} description={description}>
-  <h1>Page not found</h1>
-  <p class="standfirst">
-    There is nothing at this address. It may have been a mistyped package name,
-    or a comparison the site does not publish.
-  </p>
-  <p>
-    <a href="/">Chart any npm package</a>{' · '}
-    <a href="/packages">every package we chart</a>{' · '}
-    <a href="/compare">every comparison</a>.
-  </p>
+  <div data-not-found>
+    <h1>Page not found</h1>
+    <p class="standfirst" data-not-found-message>
+      There is nothing at this address. It may have been a mistyped package
+      name, or a comparison the site does not publish.
+    </p>
+    <p>
+      <a href="/">Chart any npm package</a>{' · '}
+      <a href="/packages">every package we chart</a>{' · '}
+      <a href="/compare">every comparison</a>.
+    </p>
+  </div>
+
+  <article data-package-page hidden>
+    <h1><span data-field="name"></span> downloads</h1>
+
+    <p class="standfirst" data-field="standfirst"></p>
+
+    <div class="tablewrap" data-block="table">
+      <table>
+        <caption class="sr-only">Download counts</caption>
+        <tbody>
+          <tr>
+            <th scope="row">All time</th>
+            <td data-field="total"></td>
+          </tr>
+          <tr data-row="last90">
+            <th scope="row">Last 90 days</th>
+            <td data-field="last90"></td>
+          </tr>
+          <tr data-row="last30">
+            <th scope="row">Last 30 days</th>
+            <td data-field="last30"></td>
+          </tr>
+          <tr data-row="last7">
+            <th scope="row">Last 7 days</th>
+            <td data-field="last7"></td>
+          </tr>
+          <tr>
+            <th scope="row">Best month</th>
+            <td data-field="bestMonth"></td>
+          </tr>
+          <tr>
+            <th scope="row">Months recorded</th>
+            <td data-field="months"></td>
+          </tr>
+          <tr data-row="yearOverYear">
+            <th scope="row">Last 12 months vs the 12 before</th>
+            <td data-field="yearOverYear"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart-block" data-block="chart">
+      <div data-field="chart">
+        <p class="chart-loading">
+          Fetching the full download history from npm — a decade of records
+          takes a handful of requests…
+        </p>
+      </div>
+      <p class="chart-caption" data-field="caption"></p>
+    </div>
+
+    <p data-block="interactive">
+      <a data-field="interactive" href="/"></a>{
+        ' '
+      }for daily, weekly or yearly views, a log axis, and a chart you can share
+      as a link.
+    </p>
+
+    <section data-block="embed">
+      <h2>Put this chart in a README</h2>
+      <p>
+        The image below redraws itself from npm’s figures, so it stays current
+        without anyone editing the file that points at it.
+      </p>
+      <pre><code data-field="embed"></code></pre>
+    </section>
+
+    <Methodology />
+  </article>
+
+  {
+    /*
+      Runs as the page parses: a path shaped like a package name swaps the 404
+      for the package skeleton at once, so the reader never sees "Page not
+      found" flash by. The bundled script below does the fetching; this one
+      only decides which of the two pages this address is.
+    */
+  }
+  <script is:inline>
+    ;(() => {
+      // Decode first: the asset server redirects `@` to `%40`, so a scoped
+      // name arrives encoded and would fail the name check as raw text.
+      let path = location.pathname.replace(/\/+$/, '')
+      try {
+        path = decodeURIComponent(path)
+      } catch {
+        /* malformed escape: not a package name either way */
+      }
+      const name = /^\/(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/i
+      if (path.length <= 214 && name.test(path)) {
+        document.querySelector('[data-not-found]').hidden = true
+        document.querySelector('[data-package-page]').hidden = false
+      }
+    })()
+  </script>
+
+  <script>
+    import { createElement } from 'react'
+    import { createRoot } from 'react-dom/client'
+    import SnapshotChart from '../components/SnapshotChart.tsx'
+    import { formatCompact, formatFull, formatPeriod } from '../lib/format.ts'
+    import {
+      fetchDownloads,
+      monthStart,
+      NpmApiError,
+    } from '../lib/npm-api.ts'
+    import { monthlyPoints, recentPoints, statsFor } from '../lib/stats.ts'
+    import { summarise } from '../lib/summarise.ts'
+
+    const page = document.querySelector('[data-package-page]')
+
+    // The inline script above decides which page this address is; the bundled
+    // one only runs its fetch when the package page won.
+    if (page && !page.hidden) {
+      // The inline script above already validated the shape; decode the same
+      // way it did (`@scope/name` arrives as `/%40scope/name` after the asset
+      // server's redirect).
+      let path = location.pathname.replace(/\/+$/, '')
+      try {
+        path = decodeURIComponent(path)
+      } catch {
+        /* malformed escape: cannot be a package the inline check passed */
+      }
+      const name = path.slice(1)
+
+      const field = (key) => page.querySelector(`[data-field="${key}"]`)
+      const block = (key) => page.querySelector(`[data-block="${key}"]`)
+
+      const setFigure = (key, value) => {
+        const cell = field(key)
+        cell.textContent = formatCompact(value)
+        cell.title = formatFull(value)
+      }
+
+      const showNotFound = (message) => {
+        page.hidden = true
+        const notFound = document.querySelector('[data-not-found]')
+        notFound.hidden = false
+        document.querySelector('[data-not-found-message]').textContent = message
+      }
+
+      const fail = (error) => {
+        if (error instanceof NpmApiError && error.code === 'not-found') {
+          showNotFound(
+            `npm has no package called "${name}" — check the spelling, or chart another package.`
+          )
+          return
+        }
+        const chart = field('chart')
+        chart.textContent =
+          error instanceof Error
+            ? `Could not load the download data: ${error.message}`
+            : 'Could not load the download data.'
+      }
+
+      const render = async () => {
+        const { series } = await fetchDownloads([name])
+        const summary = summarise(series[name] ?? [])
+        if (!summary) {
+          showNotFound(
+            `npm has records for "${name}", but they do not cover two full months yet — too young to chart.`
+          )
+          return
+        }
+
+        const stats = statsFor(summary)
+        const lastMonth = formatPeriod(
+          monthStart(summary.monthlyStart, summary.monthly.length - 1),
+          'monthly'
+        )
+
+        document.title = `${name} downloads — npm stats and full history · npmpulse`
+        const meta =
+          stats.last30 !== null
+            ? `${name} gets about ${formatCompact(stats.last30)} npm downloads a month and ${formatCompact(stats.total)} in total, charted month by month from 2015.`
+            : `${name} has been downloaded ${formatCompact(stats.total)} times in total, charted month by month from 2015.`
+        for (const selector of [
+          'meta[name="description"]',
+          'meta[property="og:description"]',
+        ]) {
+          document.querySelector(selector)?.setAttribute('content', meta)
+        }
+        document
+          .querySelector('meta[property="og:title"]')
+          ?.setAttribute('content', document.title)
+
+        field('name').textContent = name
+        field('standfirst').textContent =
+          `${name} has been downloaded ${formatCompact(stats.total)} times in total` +
+          (stats.last30 !== null
+            ? `, ${formatCompact(stats.last30)} of them in the last 30 days`
+            : '') +
+          `. npm's record for the name begins on ${summary.firstDay}, at ` +
+          `${formatFull(summary.firstDayDownloads)} download${summary.firstDayDownloads === 1 ? '' : 's'} that day.`
+
+        setFigure('total', stats.total)
+        for (const key of ['last90', 'last30', 'last7']) {
+          if (stats[key] === null) {
+            page.querySelector(`[data-row="${key}"]`).hidden = true
+          } else {
+            setFigure(key, stats[key])
+          }
+        }
+        const best = field('bestMonth')
+        best.textContent = `${stats.bestMonth.label} — ${formatCompact(stats.bestMonth.downloads)}`
+        best.title = formatFull(stats.bestMonth.downloads)
+        field('months').textContent =
+          `${stats.months} (${stats.firstMonth} onwards)`
+        if (stats.yearOverYear === null) {
+          page.querySelector('[data-row="yearOverYear"]').hidden = true
+        } else {
+          field('yearOverYear').textContent =
+            `${stats.yearOverYear.toFixed(2)}×`
+        }
+
+        field('caption').textContent =
+          `Monthly downloads from ${stats.firstMonth} to ${lastMonth}, and nothing before that: ` +
+          "npm's API reports 0 for every package until its real records begin, and those leading zeros are trimmed rather than charted."
+
+        const interactive = field('interactive')
+        interactive.href = `/?q=${encodeURIComponent(name)}`
+        interactive.textContent = `Open ${name} in the interactive chart`
+
+        field('embed').textContent =
+          `<img src="${location.origin}/api/svg?q=${encodeURIComponent(name)}&range=5y&granularity=monthly" ` +
+          `alt="${name} download history" />`
+
+        const chart = field('chart')
+        chart.replaceChildren()
+        createRoot(chart).render(
+          createElement(SnapshotChart, {
+            series: [
+              {
+                name,
+                monthly: monthlyPoints(summary),
+                daily: recentPoints(summary),
+              },
+            ],
+            asOf: summary.lastDay,
+          })
+        )
+      }
+
+      render().catch(fail)
+    }
+  </script>
 </Doc>
+
+<style>
+  .chart-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chart-caption {
+    margin: 0;
+    font-size: var(--type-small);
+    color: var(--page-muted);
+  }
+</style>

@@ -34,8 +34,8 @@
  */
 
 import { formatPeriod } from './format.ts'
+import { monthStart } from './npm-api.ts'
 import type { PackageSeries } from './snapshot.ts'
-import { monthStart } from './snapshot.ts'
 
 /** Sum of `count` months from the month starting `from`, or null if not covered. */
 export function windowSum(

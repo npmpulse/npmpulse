@@ -34,7 +34,8 @@
  */
 
 import { formatPeriod } from './format.ts'
-import { dayAt, monthStart, type PackageSeries } from './snapshot.ts'
+import { dayAt, monthStart } from './npm-api.ts'
+import type { PackageSeries } from './snapshot.ts'
 
 export interface PackageStats {
   /** The day the trailing figures end on: the snapshot's last finalised day. */

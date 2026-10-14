@@ -104,6 +104,20 @@ export function addDays(day: string, delta: number): string {
   return toDay(new Date(parseDay(day).getTime() + delta * MS_PER_DAY))
 }
 
+/** 'YYYY-MM-DD' for `index` days after `start` -- `addDays` under its old name. */
+export function dayAt(start: string, index: number): string {
+  return addDays(start, index)
+}
+
+/** 'YYYY-MM-01' for `index` months after `start`, which is itself a month start. */
+export function monthStart(start: string, index: number): string {
+  const [year, month] = start.split('-').map(Number)
+  const zero = year * 12 + (month - 1) + index
+  const y = Math.floor(zero / 12)
+  const m = (zero % 12) + 1
+  return `${y}-${String(m).padStart(2, '0')}-01`
+}
+
 /** Whole days from `a` to `b`; negative when `b` precedes `a`. */
 export function dayDiff(a: string, b: string): number {
   return Math.round(
