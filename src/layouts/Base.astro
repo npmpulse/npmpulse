@@ -55,6 +55,24 @@ const ogImage = new URL('/og.png', site).href
 const beacon = import.meta.env.PROD
   ? import.meta.env.PUBLIC_CF_BEACON_TOKEN
   : undefined
+
+/*
+  Plausible Analytics, when configured -- the same opt-in shape as the CF
+  beacon above, so a fork ships no tracker and reports nothing by default.
+
+  Set `PUBLIC_PLAUSIBLE_ENABLED=true` plus the site `PUBLIC_PLAUSIBLE_DOMAIN`
+  and the event URL of a (self-hosted) Plausible instance as
+  `PUBLIC_PLAUSIBLE_ENDPOINT` (see .env.example). Emitted only in a production
+  build, so `astro dev` never sends anything; the values are inlined at build
+  time, which is why they use the PUBLIC_ prefix.
+*/
+const plausible = import.meta.env.PROD
+  ? {
+      enabled: import.meta.env.PUBLIC_PLAUSIBLE_ENABLED === 'true',
+      domain: import.meta.env.PUBLIC_PLAUSIBLE_DOMAIN,
+      endpoint: import.meta.env.PUBLIC_PLAUSIBLE_ENDPOINT,
+    }
+  : undefined
 ---
 
 <!doctype html>
@@ -200,6 +218,43 @@ const beacon = import.meta.env.PROD
           src="https://static.cloudflareinsights.com/beacon.min.js"
           data-cf-beacon={JSON.stringify({ token: beacon })}
         />
+      )
+    }
+    {
+      /*
+        The tracker ships as a bundled module: Astro inlines any <script> that
+        carries attributes, which would leave the bare package import
+        unresolvable in the browser. Frontmatter values cannot be interpolated
+        into a processed script body either, so the config rides on a meta tag
+        the module reads back at runtime. Both are rendered only when
+        configured, like the beacon above.
+      */
+      plausible?.enabled && plausible.domain && plausible.endpoint && (
+        <>
+          <meta
+            name="plausible"
+            content={JSON.stringify({
+              domain: plausible.domain,
+              endpoint: plausible.endpoint,
+            })}
+          />
+          <script>
+            import { init } from '@plausible-analytics/tracker'
+
+            const config = document.querySelector('meta[name="plausible"]')
+            const { domain, endpoint } = config
+              ? JSON.parse(config.content)
+              : {}
+            if (domain) {
+              init({
+                domain,
+                endpoint,
+                hashBasedRouting: true,
+                outboundLinks: true,
+              })
+            }
+          </script>
+        </>
       )
     }
   </head>
