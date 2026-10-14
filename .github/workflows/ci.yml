@@ -46,6 +46,10 @@ jobs:
     # Pull requests verify only; pushes to main ship.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # The Cloudflare and analytics secrets live in this environment; without
+    # this, jobs cannot see them, and the deploy shows up under the
+    # environment's deployment history.
+    environment: cf-deploy
     steps:
       - uses: actions/checkout@v7
 
